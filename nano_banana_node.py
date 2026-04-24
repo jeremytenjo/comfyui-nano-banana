@@ -22,6 +22,7 @@ class NanoBananaProImage:
         "https://generativelanguage.googleapis.com/v1beta/"
         "models/gemini-3-pro-image-preview:generateContent"
     )
+    _CACHE: dict[tuple[str, str, str], torch.Tensor] = {}
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -45,6 +46,13 @@ class NanoBananaProImage:
             },
             "optional": {
                 "image": ("IMAGE",),
+                "image_name": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": False,
+                    },
+                ),
             },
         }
 
@@ -53,14 +61,27 @@ class NanoBananaProImage:
     FUNCTION = "generate_image"
     CATEGORY = "api/image"
 
-    def generate_image(self, api_key: str, prompt: str, image: torch.Tensor | None = None):
+    def generate_image(
+        self,
+        api_key: str,
+        prompt: str,
+        image: torch.Tensor | None = None,
+        image_name: str = "",
+    ):
         api_key = (api_key or "").strip()
         prompt = (prompt or "").strip()
+        image_name = (image_name or "").strip()
 
         if not api_key:
             raise ValueError("api_key is required")
         if not prompt:
             raise ValueError("prompt is required")
+
+        image_size = self._get_image_size(image)
+        cache_key = (image_name, image_size, prompt)
+        cached = self._CACHE.get(cache_key)
+        if cached is not None:
+            return (cached.clone(),)
 
         parts: list[dict[str, Any]] = []
         if image is not None:
@@ -111,6 +132,7 @@ class NanoBananaProImage:
 
         image_bytes = self._extract_first_image_bytes(data)
         image_tensor = self._bytes_to_comfy_tensor(image_bytes)
+        self._CACHE[cache_key] = image_tensor.clone()
         return (image_tensor,)
 
     @staticmethod
@@ -160,6 +182,15 @@ class NanoBananaProImage:
         output = BytesIO()
         pil_image.save(output, format="PNG")
         return output.getvalue()
+
+    @staticmethod
+    def _get_image_size(image: torch.Tensor | None) -> str:
+        if image is None:
+            return "none"
+        if image.ndim != 4:
+            raise ValueError("Expected IMAGE tensor with shape [B, H, W, C]")
+        _, height, width, _ = image.shape
+        return f"{int(width)}x{int(height)}"
 
 
 NODE_CLASS_MAPPINGS = {

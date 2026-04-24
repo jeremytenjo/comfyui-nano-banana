@@ -7,6 +7,7 @@ ComfyUI custom node that calls **Nano Banana Pro** (`gemini-3-pro-image-preview`
 - `api_key` (`STRING`, required): Google AI Studio API key.
 - `prompt` (`STRING`, required): Prompt to generate an image.
 - `image` (`IMAGE`, optional): Input conditioning image sent to the model.
+- `image_name` (`STRING`, optional): Name/identifier used for local cache keying.
 
 ## Output
 
@@ -28,3 +29,4 @@ pip install -r requirements.txt
 
 - This node uses direct API key access (no Comfy API proxy).
 - If the API returns multiple images, this node returns the first one.
+- The node caches outputs in memory by `(image_name, image_size, prompt)` and skips API calls on cache hits.

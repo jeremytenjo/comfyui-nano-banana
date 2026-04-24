@@ -6,6 +6,7 @@ ComfyUI custom node that calls **Nano Banana Pro** (`gemini-3-pro-image-preview`
 
 - `api_key` (`STRING`, required): Google AI Studio API key.
 - `prompt` (`STRING`, required): Prompt to generate an image.
+- `image` (`IMAGE`, optional): Input conditioning image sent to the model.
 
 ## Output
 

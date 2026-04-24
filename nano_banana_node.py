@@ -42,7 +42,10 @@ class NanoBananaProImage:
                         "multiline": True,
                     },
                 ),
-            }
+            },
+            "optional": {
+                "image": ("IMAGE",),
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -50,7 +53,7 @@ class NanoBananaProImage:
     FUNCTION = "generate_image"
     CATEGORY = "api/image"
 
-    def generate_image(self, api_key: str, prompt: str):
+    def generate_image(self, api_key: str, prompt: str, image: torch.Tensor | None = None):
         api_key = (api_key or "").strip()
         prompt = (prompt or "").strip()
 
@@ -59,11 +62,24 @@ class NanoBananaProImage:
         if not prompt:
             raise ValueError("prompt is required")
 
+        parts: list[dict[str, Any]] = []
+        if image is not None:
+            image_bytes = self._comfy_tensor_to_png_bytes(image)
+            parts.append(
+                {
+                    "inlineData": {
+                        "mimeType": "image/png",
+                        "data": base64.b64encode(image_bytes).decode("utf-8"),
+                    }
+                }
+            )
+        parts.append({"text": prompt})
+
         payload = {
             "contents": [
                 {
                     "role": "user",
-                    "parts": [{"text": prompt}],
+                    "parts": parts,
                 }
             ],
             "generationConfig": {
@@ -132,6 +148,18 @@ class NanoBananaProImage:
 
         array = np.array(image).astype(np.float32) / 255.0
         return torch.from_numpy(array).unsqueeze(0)
+
+    @staticmethod
+    def _comfy_tensor_to_png_bytes(image: torch.Tensor) -> bytes:
+        if image.ndim != 4:
+            raise ValueError("Expected IMAGE tensor with shape [B, H, W, C]")
+        sample = image[0].detach().cpu().numpy()
+        sample = np.clip(sample, 0.0, 1.0)
+        sample = (sample * 255.0).astype(np.uint8)
+        pil_image = Image.fromarray(sample)
+        output = BytesIO()
+        pil_image.save(output, format="PNG")
+        return output.getvalue()
 
 
 NODE_CLASS_MAPPINGS = {

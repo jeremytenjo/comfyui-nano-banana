@@ -24,6 +24,7 @@ class NanoBananaProImage:
     )
     _CACHE: dict[tuple[str, str, str, str], torch.Tensor] = {}
     _ASPECT_RATIO_LABELS = (
+        "9:16 (768x1344)",
         "1:1 (1024x1024)",
         "2:3 (832x1248)",
         "3:2 (1248x832)",
@@ -31,7 +32,6 @@ class NanoBananaProImage:
         "4:3 (1184x864)",
         "4:5 (896x1152)",
         "5:4 (1152x896)",
-        "9:16 (768x1344)",
         "16:9 (1344x768)",
         "21:9 (1536x672)",
     )

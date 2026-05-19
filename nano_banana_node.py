@@ -22,7 +22,20 @@ class NanoBananaProImage:
         "https://generativelanguage.googleapis.com/v1beta/"
         "models/gemini-3-pro-image-preview:generateContent"
     )
-    _CACHE: dict[tuple[str, str, str], torch.Tensor] = {}
+    _CACHE: dict[tuple[str, str, str, str, str], torch.Tensor] = {}
+    _ASPECT_RATIOS = (
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9",
+    )
+    _RESOLUTIONS = ("1K", "2K", "4K")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -43,6 +56,8 @@ class NanoBananaProImage:
                         "multiline": True,
                     },
                 ),
+                "size": (cls._ASPECT_RATIOS, {"default": "1:1"}),
+                "resolution": (cls._RESOLUTIONS, {"default": "1K"}),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -65,20 +80,28 @@ class NanoBananaProImage:
         self,
         api_key: str,
         prompt: str,
+        size: str = "1:1",
+        resolution: str = "1K",
         image: torch.Tensor | None = None,
         image_name: str = "",
     ):
         api_key = (api_key or "").strip()
         prompt = (prompt or "").strip()
         image_name = (image_name or "").strip()
+        size = (size or "1:1").strip()
+        resolution = (resolution or "1K").strip().upper()
 
         if not api_key:
             raise ValueError("api_key is required")
         if not prompt:
             raise ValueError("prompt is required")
+        if size not in self._ASPECT_RATIOS:
+            raise ValueError(f"size must be one of {', '.join(self._ASPECT_RATIOS)}")
+        if resolution not in self._RESOLUTIONS:
+            raise ValueError(f"resolution must be one of {', '.join(self._RESOLUTIONS)}")
 
         image_size = self._get_image_size(image)
-        cache_key = (image_name, image_size, prompt)
+        cache_key = (image_name, image_size, prompt, size, resolution)
         cached = self._CACHE.get(cache_key)
         if cached is not None:
             return (cached.clone(),)
@@ -105,6 +128,12 @@ class NanoBananaProImage:
             ],
             "generationConfig": {
                 "responseModalities": ["IMAGE"],
+                "responseFormat": {
+                    "image": {
+                        "aspectRatio": size,
+                        "imageSize": resolution,
+                    }
+                },
             },
         }
 
